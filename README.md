@@ -15,3 +15,6 @@
 * Images can be most file types (ie. PNG, JPG, TIFF, etc)
 * Input image must have dimensions > 100 x 100 pixels
 * Python 3 and above
+
+### Web Application:
+* https://github.com/peken97/BananaRipenessDetector
