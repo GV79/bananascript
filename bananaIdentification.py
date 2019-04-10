@@ -1,3 +1,4 @@
+# Library imports
 import numpy as np
 import imutils
 import cv2
@@ -7,7 +8,10 @@ import os
 # To improve - add more angles (template images), maybe add multiple scanning process, optimizing text
 # Multiple scanning process - If side banana template images correlation too low, test with top-down template images
 
-
+# Function purpose: Main function for running banana ripeness detection
+# @args templatePath: path to a folder containing template images
+# @args image: input image to the program (loaded by cv2.imread() function)
+# @return Returns original image with appended results
 def identifyBanana(templatePath, image):
     dimensionMultiplier = 1  # for large input image cases, this var is used to label end image with correct x and y
     mH = 0  # dimensions for best match found
@@ -21,7 +25,6 @@ def identifyBanana(templatePath, image):
         dim = (300, int(image.shape[0] * r))  # dimensions array containing new width and proper height
         image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)  # resize method
         dimensionMultiplier = r
-        print('Resized')
 
     image = imageFix(image)  # get rid of most unnecessary colors except for yellow, brown, green colors
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -41,7 +44,7 @@ def identifyBanana(templatePath, image):
             resized = imutils.resize(gray, width=int(gray.shape[1] * scale))
             r = gray.shape[1] / float(resized.shape[1])
 
-            # if the re-sized image is smaller than the template, then return error image
+            # if the re-sized image is smaller than the template, then break out of loop
             if resized.shape[0] < tH or resized.shape[1] < tW:
                 break
 
@@ -69,10 +72,10 @@ def identifyBanana(templatePath, image):
         tH = mH
         ripe = checkRipeness(found, image, tW, tH)
         (_, maxLoc, r) = found
-        (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))
+        (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))  # for bounding box
         (endX, endY) = (int((maxLoc[0] + tW) * r), int((maxLoc[1] + tH) * r))
 
-        startX = int(startX * (1/dimensionMultiplier))
+        startX = int(startX * (1/dimensionMultiplier))  # if image was re-sized in beginning, need to adjust for output
         startY = int(startY * (1/dimensionMultiplier))
         endX = int(endX * (1/dimensionMultiplier))
         endY = int(endY * (1/dimensionMultiplier))
@@ -90,13 +93,21 @@ def identifyBanana(templatePath, image):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (40, 0, 255), 2)
         return original
 
-
-def mse(imageA, imageB):  # calculate mean squared error to find similarity between two images
+# Function purpose: Computes the mean squared error (MSE) between two images
+# @args imageA: first image input
+# @args imageB: second image input
+# @return Returns error (the lower the number, the higher the similarity)
+def mse(imageA, imageB):
     err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
     err /= float(imageA.shape[0] * imageA.shape[1])
     return err
 
-
+# Function purpose: Subtracts HSV masks from matched image to detect ripeness of the banana
+# @args found: Array containing variables necessary to bound matched area
+# @args image: Input image
+# @args tW: Template width (px)
+# @args tH: Template height (px)
+# @return Returns 1 for ripe, 0 for overripe, or 2 for unripe
 def checkRipeness(found, image, tW, tH):
     (_, maxLoc, r) = found
     (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))
@@ -116,14 +127,16 @@ def checkRipeness(found, image, tW, tH):
         else:
             return 0  # overripe
 
-
+# Function purpose: Runs background subtraction on image to remove unnecessary colors
+# @args image: Input image
+# @return Returns HSV mask result (the input image with only the desired banana colors)
 def imageFix(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  # convert to HSV color space
     mask = cv2.inRange(hsv, (3, 28, 0), (81, 255, 255))  # mask that extracts yellow/brown/green colors
     dst = cv2.bitwise_and(image, image, mask=mask)  # generates image containing only desired colors
     return dst
 
-
+# Main function: Runs algorithm on input images from inputImages folder and saves them to outputImages
 def main():
     path = 'outputImages'
     for image_path in os.listdir('inputImages'):
